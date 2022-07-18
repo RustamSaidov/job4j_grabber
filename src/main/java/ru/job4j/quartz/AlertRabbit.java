@@ -19,28 +19,31 @@ public class AlertRabbit {
     public static void main(String[] args) {
         try {
             Properties config = getPropertiesFromPropFile();
-            Connection connection = getConnectionByProperties(config);
-            Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-            scheduler.start();
-            JobDataMap data = new JobDataMap();
-            data.put("conn", connection);
-            JobDetail job = newJob(Rabbit.class)
-                    .usingJobData(data)
-                    .build();
-            SimpleScheduleBuilder times = simpleSchedule()
-                    .withIntervalInSeconds(Integer.parseInt(
-                            config.getProperty("rabbit.interval")))
-                    .repeatForever();
-            Trigger trigger = newTrigger()
-                    .startNow()
-                    .withSchedule(times)
-                    .build();
-            scheduler.scheduleJob(job, trigger);
-            Thread.sleep(10000);
-            scheduler.shutdown();
-        } catch (SchedulerException | InterruptedException | SQLException se) {
-            se.printStackTrace();
-        } catch (ClassNotFoundException e) {
+            try (Connection connection = getConnectionByProperties(config)) {
+                Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+                scheduler.start();
+                JobDataMap data = new JobDataMap();
+                data.put("conn", connection);
+                JobDetail job = newJob(Rabbit.class)
+                        .usingJobData(data)
+                        .build();
+                SimpleScheduleBuilder times = simpleSchedule()
+                        .withIntervalInSeconds(Integer.parseInt(
+                                config.getProperty("rabbit.interval")))
+                        .repeatForever();
+                Trigger trigger = newTrigger()
+                        .startNow()
+                        .withSchedule(times)
+                        .build();
+                scheduler.scheduleJob(job, trigger);
+                Thread.sleep(5000);
+                scheduler.shutdown();
+            } catch (SchedulerException | InterruptedException | SQLException se) {
+                se.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (RuntimeException e) {
             throw new RuntimeException(e);
         }
     }
@@ -73,18 +76,14 @@ public class AlertRabbit {
         @Override
         public void execute(JobExecutionContext context) {
             System.out.println("Rabbit runs here ...");
-            try (Connection connect = (Connection) context.getJobDetail().getJobDataMap().get("conn")) {
-                try (PreparedStatement statement =
-                             connect.prepareStatement("insert into rabbit(created_date) values (?)",
-                                     Statement.RETURN_GENERATED_KEYS)) {
-                    statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-                    statement.execute();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
+            Connection connect = (Connection) context.getJobDetail().getJobDataMap().get("conn");
+            try (PreparedStatement statement =
+                         connect.prepareStatement("insert into rabbit(created_date) values (?)",
+                                 Statement.RETURN_GENERATED_KEYS)) {
+                statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+                statement.execute();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }

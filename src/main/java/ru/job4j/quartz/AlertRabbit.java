@@ -36,7 +36,7 @@ public class AlertRabbit {
                     .withSchedule(times)
                     .build();
             scheduler.scheduleJob(job, trigger);
-            Thread.sleep(5000);
+            Thread.sleep(10000);
             scheduler.shutdown();
         } catch (SchedulerException | InterruptedException | SQLException se) {
             se.printStackTrace();
@@ -73,15 +73,18 @@ public class AlertRabbit {
         @Override
         public void execute(JobExecutionContext context) {
             System.out.println("Rabbit runs here ...");
-            Connection connect = (Connection) context.getJobDetail().getJobDataMap().get("conn");
+            try (Connection connect = (Connection) context.getJobDetail().getJobDataMap().get("conn")) {
+                try (PreparedStatement statement =
+                             connect.prepareStatement("insert into rabbit(created_date) values (?)",
+                                     Statement.RETURN_GENERATED_KEYS)) {
+                    statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+                    statement.execute();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
-            try (PreparedStatement statement =
-                         connect.prepareStatement("insert into rabbit(created_date) values (?)",
-                                 Statement.RETURN_GENERATED_KEYS)) {
-                statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-                statement.execute();
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
         }
     }

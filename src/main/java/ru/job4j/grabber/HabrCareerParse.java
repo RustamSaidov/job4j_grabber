@@ -26,17 +26,30 @@ public class HabrCareerParse {
                 Element linkElement = titleElement.child(0);
                 String vacancyName = titleElement.text();
                 String link = String.format("%s%s", SOURCE_LINK, linkElement.attr("href"));
+                String description = getVacancyDescription(link);
                 Element dateElement = row.select(".vacancy-card__date").first();
                 Element timeElement = dateElement.child(0);
                 String datetime = String.format(timeElement.attr("datetime"));
                 HabrCareerDateTimeParser timeParser = new HabrCareerDateTimeParser();
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                System.out.printf("%s %s %s%n ",
+                System.out.printf("%s %s %s %s%n ",
                         timeParser.parse(datetime).format(formatter),
                         vacancyName,
+                        description,
                         link
                 );
             });
         }
+    }
+
+    private static String getVacancyDescription(String link) {
+        Connection innerConnection = Jsoup.connect(link);
+        Document innerDocument = null;
+        try {
+            innerDocument = innerConnection.get();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return innerDocument.select(".style-ugc").text();
     }
 }

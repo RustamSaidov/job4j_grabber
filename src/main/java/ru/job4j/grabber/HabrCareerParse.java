@@ -10,8 +10,11 @@ import ru.job4j.grabber.utils.DateTimeParser;
 import ru.job4j.grabber.utils.HabrCareerDateTimeParser;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class HabrCareerParse implements Parse {
 
@@ -72,6 +75,23 @@ public class HabrCareerParse implements Parse {
     public static void main(String[] args) throws IOException {
         HabrCareerParse habrCareerParse = new HabrCareerParse(new HabrCareerDateTimeParser());
         List<Post> list = habrCareerParse.list(PAGE_LINK + "?page=");
-        System.out.println(list);
+
+        try (InputStream in = PsqlStore.class.getClassLoader().getResourceAsStream("rabbit.properties")) {
+            Properties config = new Properties();
+            config.load(in);
+            PsqlStore store = new PsqlStore(config);
+
+            for (int i = 0; i < list.size(); i++) {
+                /*Сохраняем список отпарсенных вакансий в БД:*/
+                store.save(list.get(i));
+            }
+            /*Получаем список отпарсенных вакансий из БД:*/
+            System.out.println(store.getAll());
+            /*Получаем вакансию из БД по ID:*/
+            System.out.println("Vacancy with ID=1: " + store.findById(1));
+
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

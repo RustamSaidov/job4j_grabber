@@ -38,6 +38,7 @@ public class Grabber implements Grab {
         JobDataMap data = new JobDataMap();
         data.put("store", store);
         data.put("parse", parse);
+        data.put("cfg", cfg);
         JobDetail job = newJob(GrabJob.class)
                 .usingJobData(data)
                 .build();
@@ -58,21 +59,14 @@ public class Grabber implements Grab {
             JobDataMap map = context.getJobDetail().getJobDataMap();
             Store store = (Store) map.get("store");
             Parse parse = (Parse) map.get("parse");
-
-            HabrCareerParse habrCareerParse = (HabrCareerParse) parse;
-            List<Post> list = habrCareerParse.list("https://career.habr.com/vacancies/java_developer" + "?page=");
+            Properties cfg = (Properties) map.get("cfg");
+            List<Post> list = parse.list(cfg.getProperty("parse-link"));
 
             for (int i = 0; i < list.size(); i++) {
-                /*Сохраняем список отпарсенных вакансий в БД:*/
                 store.save(list.get(i));
             }
-            /*Получаем список отпарсенных вакансий из БД:*/
-            System.out.println(store.getAll());
-            /*Получаем вакансию из БД по ID:*/
-            System.out.println("Vacancy with ID=401: " + store.findById(1));
         }
     }
-
 
     public static void main(String[] args) throws Exception {
         Grabber grab = new Grabber();
